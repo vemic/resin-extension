@@ -14,6 +14,14 @@ if not exist "%RESIN_HOME%\resin.exe" (
     exit /b 1
 )
 
+rem resin.jar の存在確認
+if not exist "%RESIN_HOME%\lib\resin.jar" (
+    echo エラー: resin.jar が見つかりません: %RESIN_HOME%\lib\resin.jar
+    echo Resinが正しくインストールされていることを確認してください
+    pause
+    exit /b 1
+)
+
 echo RESIN_HOME: %RESIN_HOME%
 echo.
 
@@ -22,12 +30,19 @@ echo [1/4] Resin稼働状態チェック
 echo =============================
 echo Resinプロセスをチェックしています...
 
-rem Javaプロセスでresin.jarが動作しているかチェック
-tasklist /fi "imagename eq java.exe" /fo csv | findstr /i "java.exe" >nul 2>&1
-if %errorlevel% equ 0 (
+rem resin.jarを使用しているJavaプロセスをチェック
+set RESIN_RUNNING=false
+for /f "tokens=2" %%i in ('tasklist /fi "imagename eq java.exe" /fo csv /nh 2^>nul') do (
+    wmic process where "processid=%%~i" get commandline 2>nul | findstr /i "resin.jar" >nul 2>&1
+    if !errorlevel! equ 0 (
+        set RESIN_RUNNING=true
+    )
+)
+
+if "!RESIN_RUNNING!"=="true" (
     echo.
-    echo **警告: Javaプロセスが実行中です**
-    echo Resinが稼働中の可能性があります。
+    echo **警告: Resinが実行中です**
+    echo resin.jarを使用しているJavaプロセスが検出されました。
     echo 再デプロイが正常に行われない、または失敗する可能性があります。
     echo.
     set /p CONTINUE="続行しますか？ (y/n): "
